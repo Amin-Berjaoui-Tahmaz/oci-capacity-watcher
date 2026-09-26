@@ -56,3 +56,8 @@ jobs:
           else
             echo "::warning::Attempt failed (expected - capacity/limit/rate). Will retry next scheduled run."
           fi
+
+      - name: Notify on success
+        if: steps.launch.outputs.exit_code == '0'
+        run: |
+          curl -d "A1 instance launched successfully!" ntfy.sh/${{ secrets.NTFY_TOPIC }}
