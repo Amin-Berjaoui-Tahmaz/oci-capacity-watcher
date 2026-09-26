@@ -30,7 +30,8 @@ jobs:
         run: echo "${{ secrets.SSH_PUBLIC_KEY }}" > /tmp/ssh_key.pub
 
       - name: Write shape config
-        run: echo '{"ocpus": 2, "memoryInGBs": 12}' > /tmp/shape-config.json
+        run: |
+          echo '{"ocpus": 2, "memoryInGBs": 12}' > /tmp/shape-config.json
 
       - name: Attempt instance launch
         id: launch
