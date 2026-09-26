@@ -1,0 +1,57 @@
+name: OCI A1 Capacity Retry
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 min — avoids the TooManyRequests you hit at 60s
+  workflow_dispatch: {}       # lets you manually trigger a run from the Actions tab too
+
+jobs:
+  try-launch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up OCI CLI config
+        run: |
+          mkdir -p ~/.oci
+          cat > ~/.oci/config << EOF
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=~/.oci/oci_api_key.pem
+          EOF
+          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem ~/.oci/config
+
+      - name: Install OCI CLI
+        run: pip install oci-cli
+
+      - name: Write SSH public key
+        run: echo "${{ secrets.SSH_PUBLIC_KEY }}" > /tmp/ssh_key.pub
+
+      - name: Write shape config
+        run: echo '{"ocpus": 2, "memoryInGBs": 12}' > /tmp/shape-config.json
+
+      - name: Attempt instance launch
+        id: launch
+        run: |
+          set +e
+          oci compute instance launch \
+            --compartment-id "${{ secrets.OCI_COMPARTMENT_ID }}" \
+            --availability-domain "${{ secrets.OCI_AD }}" \
+            --shape "VM.Standard.A1.Flex" \
+            --shape-config file:///tmp/shape-config.json \
+            --image-id "${{ secrets.OCI_IMAGE_ID }}" \
+            --subnet-id "${{ secrets.OCI_SUBNET_ID }}" \
+            --display-name "multi-project-server" \
+            --assign-public-ip false \
+            --ssh-authorized-keys-file /tmp/ssh_key.pub
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Report result
+        run: |
+          if [ "${{ steps.launch.outputs.exit_code }}" = "0" ]; then
+            echo "::notice::SUCCESS - instance launched!"
+          else
+            echo "::warning::Attempt failed (expected - capacity/limit/rate). Will retry next scheduled run."
+          fi
