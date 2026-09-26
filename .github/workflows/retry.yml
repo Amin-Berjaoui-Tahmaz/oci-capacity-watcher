@@ -2,8 +2,13 @@ name: OCI A1 Capacity Retry
 
 on:
   schedule:
-    - cron: "2-59/7 * * * *"   # every 7 min, offset from :00 to dodge GitHub's top-of-interval queueing
-  workflow_dispatch: {}         # lets you manually trigger a run from the Actions tab too
+    - cron: "2-59/5 * * * *"   # every 5 min, offset from :00 to dodge GitHub's top-of-interval queueing
+  workflow_dispatch:
+    inputs:
+      simulate_success:
+        description: "Skip real launch and simulate success (for testing notifications)"
+        type: boolean
+        default: false
 
 jobs:
   try-launch:
@@ -36,6 +41,12 @@ jobs:
       - name: Attempt instance launch
         id: launch
         run: |
+          if [ "${{ inputs.simulate_success }}" = "true" ]; then
+            echo "SIMULATED - skipping real launch."
+            echo "exit_code=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           set +e
           oci compute instance launch \
             --compartment-id "${{ secrets.OCI_COMPARTMENT_ID }}" \
