@@ -36,7 +36,7 @@ jobs:
 
       - name: Write shape config
         run: |
-          echo '{"ocpus": 2, "memoryInGBs": 12}' > /tmp/shape-config.json
+          echo '{"ocpus": 1, "memoryInGBs": 6}' > /tmp/shape-config.json
 
       - name: Attempt instance launch
         id: launch
